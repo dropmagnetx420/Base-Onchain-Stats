@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Base Onchain Stats Viewer</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.min.js"></script>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: radial-gradient(circle at top, #0d0f12, #000);
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+    h1 {
+      color: #00aaff;
+      font-size: 1.8em;
+      margin-bottom: 25px;
+    }
+    .card {
+      background: #161a20;
+      border-radius: 16px;
+      padding: 20px;
+      margin: 15px auto;
+      width: 90%;
+      max-width: 420px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.3);
+    }
+    .title {
+      font-size: 1.2em;
+      color: #66ccff;
+    }
+    .value {
+      font-size: 1.5em;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+    button {
+      background: #00aaff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      margin: 15px;
+      font-size: 1em;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    button:hover {
+      background: #0090dd;
+    }
+    .footer {
+      color: #777;
+      font-size: 0.85em;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌐 Base Onchain Stats Viewer</h1>
+
+  <div class="card">
+    <div class="title">Current Block</div>
+    <div id="blockNumber" class="value">Loading...</div>
+  </div>
+
+  <div class="card">
+    <div class="title">Gas Price (Gwei)</div>
+    <div id="gasPrice" class="value">Loading...</div>
+  </div>
+
+  <div class="card">
+    <div class="title">Base TVL (USD)</div>
+    <div id="tvl" class="value">Loading...</div>
+  </div>
+
+  <button id="refreshBtn">🔄 Refresh Stats</button>
+  <button id="connectBtn">🔗 Connect Wallet</button>
+
+  <div id="walletInfo" class="footer"></div>
+
+  <script>
+    const baseRPC = "https://mainnet.base.org";
+    let provider;
+
+    async function fetchData() {
+      try {
+        const response = await fetch(baseRPC, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_blockNumber", params: [] })
+        });
+        const data = await response.json();
+        const blockNumber = parseInt(data.result, 16);
+        document.getElementById("blockNumber").textContent = blockNumber.toLocaleString();
+
+        const gasResp = await fetch(baseRPC, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "eth_gasPrice", params: [] })
+        });
+        const gasData = await gasResp.json();
+        const gasPriceGwei = parseInt(gasData.result, 16) / 1e9;
+        document.getElementById("gasPrice").textContent = gasPriceGwei.toFixed(2);
+
+        const tvlResp = await fetch("https://api.llama.fi/chains");
+        const chains = await tvlResp.json();
+        const baseChain = chains.find(c => c.name.toLowerCase() === "base");
+        document.getElementById("tvl").textContent = "$" + baseChain.tvl.toLocaleString();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function connectWallet() {
+      try {
+        if (window.ethereum) {
+          provider = new ethers.BrowserProvider(window.ethereum);
+          const accounts = await provider.send("eth_requestAccounts", []);
+          const address = accounts[0];
+          const shortAddr = address.slice(0, 6) + "..." + address.slice(-4);
+          document.getElementById("walletInfo").textContent = "Connected: " + shortAddr;
+        } else {
+          alert("No wallet found. Try MetaMask or Base Wallet.");
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    document.getElementById("refreshBtn").addEventListener("click", fetchData);
+    document.getElementById("connectBtn").addEventListener("click", connectWallet);
+
+    fetchData();
+  </script>
+</body>
+</html>
